@@ -1,3 +1,5 @@
-let foo;
+const foo = 5;
 console.log(foo);
-// hehe
+{
+	const foo = 10;
+}

@@ -1,26 +1,29 @@
 use std::fs::read_to_string;
 use tree_sitter::{Parser, Tree, TreeCursor};
 
-fn print_and_dip(crs: &mut TreeCursor, src: &str) {
+fn call_and_walk(crs: &mut TreeCursor, src: &str, cb: fn(&TreeCursor, &str) -> ()) {
+    cb(crs, src);
+    if crs.goto_first_child() {
+        call_and_walk(crs, src, cb);
+    }
+    while crs.goto_next_sibling() {
+        call_and_walk(crs, src, cb);
+    }
+    crs.goto_parent();
+}
+
+fn print_callback(crs: &TreeCursor, src: &str) -> () {
     let node = crs.node();
-    let depth = (crs.depth() * 2) as usize;
+    let indent = (crs.depth() * 2) as usize;
     println!(
-        "{:depth$}node type: {}\n{:depth$}depth: {}\n{:depth$}content: {}",
+        "{:indent$}node type: {} | depth: {} | grammar id: {} | content: {}",
         "",
         node.kind(),
-        "",
         crs.depth(),
-        "",
+        node.grammar_id(),
         node.utf8_text(src.as_bytes())
             .expect("Couldn't decode node text content")
     );
-    if crs.goto_first_child() {
-        print_and_dip(crs, src);
-    }
-    while crs.goto_next_sibling() {
-        print_and_dip(crs, src);
-    }
-    crs.goto_parent();
 }
 
 fn main() -> Result<(), String> {
@@ -37,6 +40,7 @@ fn main() -> Result<(), String> {
         .ok_or("Could not parse JS file!")?;
     let root = tree.root_node();
     let mut cursor = root.walk();
-    print_and_dip(&mut cursor, &file_str);
+
+    call_and_walk(&mut cursor, &file_str, print_callback);
     Ok(())
 }
