@@ -7,7 +7,7 @@ use search::*;
 use treesitter::*;
 
 fn main() -> Result<(), String> {
-    if let Ok((file_str, tree)) = setup_parser() {
+    if let Ok((file_str, tree)) = read_and_parse_file() {
         // Get the tree cursor starting from the root node
         let mut cursor = tree.root_node().walk();
 

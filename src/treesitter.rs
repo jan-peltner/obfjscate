@@ -1,7 +1,7 @@
 use std::fs::read_to_string;
 use tree_sitter::{Parser, Tree};
 
-pub fn setup_parser() -> Result<(String, Tree), String> {
+pub fn read_and_parse_file() -> Result<(String, Tree), String> {
     let file_str = read_to_string("./js/simple.js").map_err(|_| "Could not read JS file")?;
     let js_grammar = tree_sitter_javascript::language();
 
