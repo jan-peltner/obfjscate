@@ -1,46 +1,29 @@
-use std::fs::read_to_string;
-use tree_sitter::{Parser, Tree, TreeCursor};
+mod callbacks;
+mod search;
+mod treesitter;
 
-fn call_and_walk(crs: &mut TreeCursor, src: &str, cb: fn(&TreeCursor, &str) -> ()) {
-    cb(crs, src);
-    if crs.goto_first_child() {
-        call_and_walk(crs, src, cb);
-    }
-    while crs.goto_next_sibling() {
-        call_and_walk(crs, src, cb);
-    }
-    crs.goto_parent();
-}
-
-fn print_callback(crs: &TreeCursor, src: &str) -> () {
-    let node = crs.node();
-    let indent = (crs.depth() * 2) as usize;
-    println!(
-        "{:indent$}node type: {} | depth: {} | grammar id: {} | content: {}",
-        "",
-        node.kind(),
-        crs.depth(),
-        node.grammar_id(),
-        node.utf8_text(src.as_bytes())
-            .expect("Couldn't decode node text content")
-    );
-}
+use callbacks::*;
+use search::*;
+use treesitter::*;
 
 fn main() -> Result<(), String> {
-    let file_str = read_to_string("./js/simple.js").map_err(|_| "Could not read JS file")?;
-    let js_grammar = tree_sitter_javascript::language();
+    if let Ok((file_str, tree)) = setup_parser() {
+        // Get the tree cursor starting from the root node
+        let mut cursor = tree.root_node().walk();
 
-    let mut parser = Parser::new();
-    parser
-        .set_language(&js_grammar)
-        .map_err(|_| "Could not set JS grammar!")?;
+        // Example 1: Printing nodes
+        call_and_walk(&mut cursor, &file_str, &mut print_nodes, &mut ());
 
-    let tree: Tree = parser
-        .parse(&file_str, None)
-        .ok_or("Could not parse JS file!")?;
-    let root = tree.root_node();
-    let mut cursor = root.walk();
+        // Example 2: Collecting identifiers
+        let mut identifiers: Vec<(String, core::ops::Range<usize>)> = Vec::new();
+        call_and_walk(
+            &mut cursor,
+            &file_str,
+            &mut collect_identifiers,
+            &mut identifiers,
+        );
+        println!("Identifiers found: {:?}", identifiers);
+    };
 
-    call_and_walk(&mut cursor, &file_str, print_callback);
     Ok(())
 }
